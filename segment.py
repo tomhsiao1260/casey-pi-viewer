@@ -201,5 +201,9 @@ with open(OBJ_INFO, "w") as outfile:
     json.dump(meta, outfile, indent=4)
 
 with open(f'{OBJ_OUTPUT}/.gitkeep', 'w'): pass
+shutil.copy(MASK_INPUT, './output/segment')
+
+shutil.rmtree('client/public/segment', ignore_errors=True)
+shutil.copytree(OBJ_OUTPUT, 'client/public/segment', dirs_exist_ok=True)
 
 

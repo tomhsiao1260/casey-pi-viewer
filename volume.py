@@ -104,6 +104,9 @@ with open(NRRD_INFO, "w") as outfile:
 
 with open(f'{NRRD_OUTPUT}/.gitkeep', 'w'): pass
 
+shutil.rmtree('client/public/volume', ignore_errors=True)
+shutil.copytree(NRRD_OUTPUT, 'client/public/volume', dirs_exist_ok=True)
+
 
 
 
