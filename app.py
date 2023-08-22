@@ -74,6 +74,37 @@ def draw_rectangle(image_path, output_path, coordinates):
     # image.show()
     image.save(output_path)
 
+def processing(data):
+    vertices = data['vertices']
+    normals  = data['normals']
+    uvs      = data['uvs']
+    faces    = data['faces']
+
+    # calculate bounding box
+    mean_vertices = np.mean(vertices, axis=0)
+    max_x = np.max(np.abs(vertices[:, 0] - mean_vertices[0]))
+    max_y = np.max(np.abs(vertices[:, 1] - mean_vertices[1]))
+    max_z = np.max(np.abs(vertices[:, 2] - mean_vertices[2]))
+
+    bounding_box = {}
+    bounding_box['min'] = mean_vertices - np.array([max_x, max_y, max_z])
+    bounding_box['max'] = mean_vertices + np.array([max_x, max_y, max_z])
+
+    # translate & rescale
+    p_vertices = vertices
+    p_normals = normals
+    p_uvs = uvs
+    p_faces = faces
+
+    p_data = {}
+    p_data['vertices']    = p_vertices
+    p_data['normals']     = p_normals
+    p_data['uvs']         = p_uvs
+    p_data['faces']       = p_faces
+    p_data['boundingBox'] = bounding_box
+
+    return p_data
+
 shutil.rmtree('output', ignore_errors=True)
 os.makedirs('output')
 
@@ -99,8 +130,24 @@ for i, matrix in enumerate(filtered_faces):
         matrix[j, :] = str(1 + filtered_indices.tolist().index(int(matrix[j, 0])-1))
 filtered_data['faces'] = filtered_faces
 
+p_data = processing(filtered_data)
+
+c = p_data['boundingBox']['min']
+b = p_data['boundingBox']['max']
+
+c[c < 0] = 0
+b[b < 0] = 0
+
+info = {}
+info['id'] = ID
+info['clip'] = {}
+info['clip']['x'] = int(c[0])
+info['clip']['y'] = int(c[1])
+info['clip']['z'] = int(c[2])
+info['clip']['w'] = int(b[0] - c[0])
+info['clip']['h'] = int(b[1] - c[1])
+info['clip']['d'] = int(b[2] - c[2])
+
+print(info)
+
 save_obj(OBJ_OUTPUT, filtered_data)
-
-# print("Filtered data_uv shape:", filtered_data_uv.shape)
-# print("Filtered data_vertices shape:", filtered_data_vertices.shape)
-
