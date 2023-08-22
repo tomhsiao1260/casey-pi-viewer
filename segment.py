@@ -9,8 +9,10 @@ ID = '20230509182749'
 OBJ_INPUT = f'./input/{ID}.obj'
 MASK_INPUT = f'./input/{ID}-mask.png'
 
-REGION_OUTPUT = f'./output/region.png'
-OBJ_OUTPUT = f'./output/{ID}-mask.obj'
+OBJ_OUTPUT = './output/segment'
+OBJ_INFO   = './output/segment/meta.json'
+OBJ_MASK   = f'./output/segment/{ID}-mask.obj'
+REGION_OUTPUT = f'./output/segment/region.png'
 
 uvs = (0.72, 0.17, 0.78, 0.35)
 
@@ -105,8 +107,41 @@ def processing(data):
 
     return p_data
 
-shutil.rmtree('output', ignore_errors=True)
-os.makedirs('output')
+def subclip(data):
+    vertices     = data['vertices']
+    uvs          = data['uvs']
+    bounding_box = data['boundingBox']
+
+    w, h, d = 150, 150, 150
+    min_x, min_y, min_z = bounding_box['min']
+    max_x, max_y, max_z = bounding_box['max']
+
+    subclip_list = []
+    for x in range(int(min_x), int(max_x), w):
+        for y in range(int(min_y), int(max_y), h):
+            for z in range(int(min_z), int(max_z), d):
+                if (x < 0): x = 0
+                if (y < 0): y = 0
+                if (z < 0): z = 0
+                ws, hs, ds = w, h, d
+                if (x + w > max_x): ws = int(max_x - x)
+                if (y + h > max_y): hs = int(max_y - y)
+                if (z + d > max_z): ds = int(max_z - z)
+
+                if np.any((vertices[:, 0] >= x) & (vertices[:, 0] < x + w) &
+                          (vertices[:, 1] >= y) & (vertices[:, 1] < y + h) &
+                          (vertices[:, 2] >= z) & (vertices[:, 2] < z + d)):
+                    item = {}
+                    item['id'] = str(len(subclip_list))
+                    item['clip'] = { 'x': x, 'y': y, 'z': z, 'w': ws, 'h': hs, 'd': ds }
+                    item['shape'] = { 'w': ws, 'h': hs, 'd': ds }
+                    subclip_list.append(item)
+
+    return subclip_list
+
+# clear .obj output folder
+shutil.rmtree(OBJ_OUTPUT, ignore_errors=True)
+os.makedirs(OBJ_OUTPUT)
 
 data = parse_obj(OBJ_INPUT)
 draw_rectangle(MASK_INPUT, REGION_OUTPUT, uvs)
@@ -130,6 +165,8 @@ for i, matrix in enumerate(filtered_faces):
         matrix[j, :] = str(1 + filtered_indices.tolist().index(int(matrix[j, 0])-1))
 filtered_data['faces'] = filtered_faces
 
+save_obj(OBJ_MASK, filtered_data)
+
 p_data = processing(filtered_data)
 
 c = p_data['boundingBox']['min']
@@ -139,7 +176,7 @@ c[c < 0] = 0
 b[b < 0] = 0
 
 info = {}
-info['id'] = ID
+info['id'] = f'{ID}-mask'
 info['clip'] = {}
 info['clip']['x'] = int(c[0])
 info['clip']['y'] = int(c[1])
@@ -148,6 +185,21 @@ info['clip']['w'] = int(b[0] - c[0])
 info['clip']['h'] = int(b[1] - c[1])
 info['clip']['d'] = int(b[2] - c[2])
 
-print(info)
+SUBCLIP_LIST = subclip(p_data)
 
-save_obj(OBJ_OUTPUT, filtered_data)
+subclip_meta = {}
+subclip_meta['subclip'] = SUBCLIP_LIST
+
+with open('./input/subclip_meta.json', "w") as outfile:
+    json.dump(subclip_meta, outfile, indent=4)
+
+meta = {}
+meta['obj'] = []
+meta['obj'].append(info)
+
+with open(OBJ_INFO, "w") as outfile:
+    json.dump(meta, outfile, indent=4)
+
+with open(f'{OBJ_OUTPUT}/.gitkeep', 'w'): pass
+
+
