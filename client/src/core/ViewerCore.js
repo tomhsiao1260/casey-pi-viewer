@@ -14,8 +14,8 @@ import { GenerateSDFMaterial } from './GenerateSDFMaterial'
 import { RenderSDFLayerMaterial } from './RenderSDFLayerMaterial'
 
 export default class ViewerCore {
-  constructor({ volumeMeta, segmentMeta }) {
-    this.renderer = null
+  constructor({ volumeMeta, segmentMeta, renderer }) {
+    this.renderer = renderer
     this.scene = null
     this.camera = null
     this.clipGeometry = null
@@ -37,8 +37,8 @@ export default class ViewerCore {
     this.layerPass = new FullScreenQuad(new RenderSDFLayerMaterial())
 
     this.params = {}
-    this.params.mode = 'segment'
-    // this.params.mode = 'volume-segment'
+    // this.params.mode = 'segment'
+    this.params.mode = 'volume-segment'
     this.params.surface = 0.003
     this.params.layer = 0
     this.params.inverse = false
@@ -50,19 +50,19 @@ export default class ViewerCore {
   }
 
   init() {
-    // renderer setup
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, canvas: this.canvas })
-    this.renderer.setPixelRatio(window.devicePixelRatio)
-    this.renderer.setSize(window.innerWidth, window.innerHeight)
-    this.renderer.setClearColor(0, 0)
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    // // renderer setup
+    // this.renderer = new THREE.WebGLRenderer({ antialias: true, canvas: this.canvas })
+    // this.renderer.setPixelRatio(window.devicePixelRatio)
+    // this.renderer.setSize(window.innerWidth, window.innerHeight)
+    // this.renderer.setClearColor(0, 0)
+    // this.renderer.outputColorSpace = THREE.SRGBColorSpace
 
     // scene setup
     this.scene = new THREE.Scene()
     this.scene.add(this.boxHelper)
 
     // camera setup
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50)
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / 2 / window.innerHeight, 0.1, 50)
     this.camera.position.copy(new THREE.Vector3(0.4, -0.4, -1.0).multiplyScalar(1.0))
     this.camera.up.set(0, -1, 0)
     this.camera.far = 10
@@ -80,7 +80,7 @@ export default class ViewerCore {
     )
 
     const controls = new OrbitControls(this.camera, this.canvas)
-    controls.addEventListener('change', this.render)
+    // controls.addEventListener('change', this.render)
 
     // list all layer options
     for (let i = 0; i < this.volumeMeta.nrrd.length; i++) {
