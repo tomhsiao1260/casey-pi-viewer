@@ -2,7 +2,9 @@ import * as THREE from 'three'
 import Loader from './Loader'
 import ViewerCore from './core/ViewerCore'
 import { ViewMaterial } from './ViewMaterial'
+import { MixMaterial } from './MixMaterial'
 import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min'
+import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass'
 
 let viewer
 
@@ -70,13 +72,15 @@ function tick() {
 }
 tick()
 
-const buffer0 = new THREE.WebGLRenderTarget(sizes.width / 2, sizes.height)
-const buffer1 = new THREE.WebGLRenderTarget(sizes.width / 2, sizes.height)
-const bufferArray = [ buffer0, buffer1 ]
+const buffer0 = new THREE.WebGLRenderTarget(sizes.width / 2, sizes.height) // segment
+const buffer1 = new THREE.WebGLRenderTarget(sizes.width / 2, sizes.height) // volume
+const buffer2 = new THREE.WebGLRenderTarget(sizes.width / 2, sizes.height) // volume-segment
+const buffer3 = new THREE.WebGLRenderTarget(sizes.width / 2, sizes.height) // mix scene
+const bufferArray = [ buffer0, buffer1, buffer2, buffer3 ]
 
 cube0.material = new ViewMaterial()
 cube1.material = new ViewMaterial()
-cube0.material.uniforms.uTexture.value = bufferArray[0].texture
+cube0.material.uniforms.uTexture.value = bufferArray[3].texture
 cube1.material.uniforms.uTexture.value = bufferArray[1].texture
 
 init()
@@ -90,12 +94,18 @@ async function init() {
   update()
 }
 
+const enable = { volume: false }
+
 async function update() {
   await Promise.all([modeA(viewer), modeC(viewer)])
 
   updateBuffer()
   updateGUI()
 }
+
+const mixPass = new FullScreenQuad(new MixMaterial())
+mixPass.material.uniforms.uSegmentTexture.value = bufferArray[0].texture
+mixPass.material.uniforms.uVolumeTexture.value = bufferArray[2].texture
 
 function updateBuffer() {
   const modeOrigin = viewer.params.mode
@@ -104,10 +114,17 @@ function updateBuffer() {
   renderer.setRenderTarget(bufferArray[0])
   renderer.clear()
   viewer.render()
-  viewer.params.mode = 'volume-segment'
+  viewer.params.mode = 'volume'
   renderer.setRenderTarget(bufferArray[1])
   renderer.clear()
   viewer.render()
+  viewer.params.mode = 'volume-segment'
+  renderer.setRenderTarget(bufferArray[2])
+  renderer.clear()
+  if (enable.volume) viewer.render()
+  // mix
+  renderer.setRenderTarget(bufferArray[3])
+  mixPass.render(renderer)
   renderer.setRenderTarget(null)
 
   viewer.params.mode = modeOrigin
@@ -121,13 +138,17 @@ function updateGUI() {
 
   if (gui) { gui.destroy() }
   gui = new GUI()
-  gui.add(viewer.params, 'mode', ['segment', 'volume-segment']).onChange(update)
-  gui.add(viewer.params.layers, 'select', viewer.params.layers.options).name('layers').onChange(update)
+  // gui.add(viewer.params, 'mode', ['segment', 'volume-segment']).onChange(update)
+  // gui.add(viewer.params.layers, 'select', viewer.params.layers.options).name('layers').onChange(update)
 
   if (mode === 'segment') { return }
   if (mode === 'volume') { return }
   if (mode === 'volume-segment') {
+    gui.add(enable, 'volume').onChange(updateBuffer)
     gui.add(viewer.params, 'surface', 0.001, 0.5).onChange(updateBuffer)
+    gui.add(viewer.params, 'alpha', 0, 1).onChange(updateBuffer)
+    // gui.add(viewer.params, 'climMin', 0, 1).onChange(updateBuffer)
+    // gui.add(viewer.params, 'climMax', 0, 1).onChange(updateBuffer)
   }
   if (mode === 'layer') {
     const id = viewer.params.layers.select

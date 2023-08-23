@@ -200,6 +200,10 @@ meta['obj'].append(info)
 with open(OBJ_INFO, "w") as outfile:
     json.dump(meta, outfile, indent=4)
 
+
+image = Image.open('./input/20230509182749.tif')
+image.save('./output/segment/20230509182749-texture.png', format='PNG')
+
 with open(f'{OBJ_OUTPUT}/.gitkeep', 'w'): pass
 shutil.copy(MASK_INPUT, './output/segment')
 

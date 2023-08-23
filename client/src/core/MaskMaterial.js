@@ -7,6 +7,7 @@ export class MaskMaterial extends ShaderMaterial {
       side: DoubleSide,
 
       uniforms: {
+        uAlpha : { value: 1.0 },
         uTexture : { value: null }
       },
 
@@ -20,10 +21,12 @@ export class MaskMaterial extends ShaderMaterial {
 
       fragmentShader: /* glsl */ `
         varying vec2 vUv;
+        uniform float uAlpha;
         uniform sampler2D uTexture;
 
         void main() {
           gl_FragColor = texture2D(uTexture, vUv);
+          gl_FragColor.a *= uAlpha;
         }
       `
     });

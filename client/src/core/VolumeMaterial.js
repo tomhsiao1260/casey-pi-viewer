@@ -10,6 +10,8 @@ export class VolumeMaterial extends ShaderMaterial {
         SURFACE_EPSILON: 0.001
       },
 
+      transparent: true,
+
       uniforms: {
         surface: { value: 0 },
         sdfTex: { value: null },
@@ -28,7 +30,7 @@ export class VolumeMaterial extends ShaderMaterial {
       },
 
       vertexShader: /* glsl */ `
-				varying vec2 vUv;
+        varying vec2 vUv;
 				void main() {
 					vUv = uv;
 					gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
@@ -85,9 +87,6 @@ export class VolumeMaterial extends ShaderMaterial {
 
 				void main() {
           float fragCoordZ = -1.;
-
-          // float v = texture(sdfTex, vec3( vUv, 1.0 )).r;
-          // gl_FragColor = vec4(v, v, v, 1.0); return;
 
           // get the inverse of the sdf box transform
 					mat4 sdfTransform = inverse( sdfTransformInverse );
@@ -187,9 +186,6 @@ export class VolumeMaterial extends ShaderMaterial {
                 cast_iso(uv, step, nsteps, sdfRayDirection);
               return;
             }
-
-            if (gl_FragColor.a < 0.05)
-             discard;
           }
 				}
 

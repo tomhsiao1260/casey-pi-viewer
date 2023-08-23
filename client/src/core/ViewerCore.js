@@ -32,6 +32,7 @@ export default class ViewerCore {
     this.boxHelper = new THREE.Box3Helper(new THREE.Box3())
     this.cmtextures = { viridis: new THREE.TextureLoader().load(textureViridis) }
     this.masktextures = { mask: new THREE.TextureLoader().load('segment/20230509182749-mask.png') }
+    this.segtextures = { seg: new THREE.TextureLoader().load('segment/20230509182749-texture.png') }
     this.spottextures = { spot: new THREE.TextureLoader().load('spot.png') }
     this.volumePass = new FullScreenQuad(new VolumeMaterial())
     this.layerPass = new FullScreenQuad(new RenderSDFLayerMaterial())
@@ -39,12 +40,13 @@ export default class ViewerCore {
     this.params = {}
     // this.params.mode = 'segment'
     this.params.mode = 'volume-segment'
-    this.params.surface = 0.003
+    this.params.surface = 0.5
+    this.params.alpha = 0.0
     this.params.layer = 0
     this.params.inverse = false
-    this.params.climMin = 0.5
-    this.params.climMax = 0.9
-    this.params.layers = { select: 0, options: {} }
+    this.params.climMin = 0.6
+    this.params.climMax = 1.0
+    this.params.layers = { select: 9, options: {} }
 
     this.init()
   }
@@ -63,7 +65,7 @@ export default class ViewerCore {
 
     // camera setup
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / 2 / window.innerHeight, 0.1, 50)
-    this.camera.position.copy(new THREE.Vector3(0.4, -0.4, -1.0).multiplyScalar(1.0))
+    this.camera.position.copy(new THREE.Vector3(0.4, -0.4, -1.0).multiplyScalar(2.3))
     this.camera.up.set(0, -1, 0)
     this.camera.far = 10
     this.camera.updateProjectionMatrix()
@@ -186,13 +188,18 @@ export default class ViewerCore {
 
     // create
     const loadingList = []
-    const maskMaterial = new MaskMaterial()
+    this.maskMaterial = new MaskMaterial()
     this.masktextures.mask.minFilter = THREE.NearestFilter
-    maskMaterial.uniforms.uTexture.value = this.masktextures.mask
+    this.maskMaterial.uniforms.uTexture.value = this.masktextures.mask
+    this.maskMaterial.uniforms.uAlpha.value = this.params.alpha
 
-    const particleMaterial = new ParticleMaterial()
-    particleMaterial.uniforms.uTexture.value = this.spottextures.spot
-    particleMaterial.uniforms.uSize.value = 30.0 * this.renderer.getPixelRatio()
+    // const particleMaterial = new ParticleMaterial()
+    // particleMaterial.uniforms.uTexture.value = this.spottextures.spot
+    // particleMaterial.uniforms.uSize.value = 30.0 * this.renderer.getPixelRatio()
+    const particleMaterial = new THREE.MeshBasicMaterial({
+      side: THREE.DoubleSide,
+      map: this.segtextures.seg
+    })
 
     const normalMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide })
     const basicMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, color: 'red' })
@@ -204,11 +211,12 @@ export default class ViewerCore {
       const loading = Loader.getSegmentData(sID + '.obj')
       loading.then((object) => {
         const geometry = object.children[0].geometry                          
-        const mesh = new THREE.Points(geometry, particleMaterial)
+        const mesh = new THREE.Mesh(geometry, particleMaterial)
+        // const mesh = new THREE.Points(geometry, particleMaterial)
         mesh.userData = sTarget
         mesh.name = sID
         this.scene.add(mesh)
-        const mesh_ = new THREE.Mesh(geometry, maskMaterial)
+        const mesh_ = new THREE.Mesh(geometry, this.maskMaterial)
         mesh_.userData = sTarget
         mesh_.name = sID
         this.scene.add(mesh_)
@@ -482,6 +490,7 @@ export default class ViewerCore {
 
     // segment mode
     if (this.params.mode === 'segment') {
+      this.maskMaterial.uniforms.uAlpha.value = this.params.alpha
       this.renderer.render(this.scene, this.camera)
     }
     // volume & volume-segment mode
