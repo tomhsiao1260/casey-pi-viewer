@@ -13,7 +13,7 @@ async function init() {
 
   loading()
   update(viewer)
-  labeling(viewer)
+  // labeling(viewer)
   // snapshot(viewer, 'segment')
 }
 

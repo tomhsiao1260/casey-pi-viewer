@@ -1,12 +1,15 @@
 import * as THREE from 'three'
 import Loader from '../Loader'
 import textureViridis from './textures/cm_viridis.png'
+import textureMask from './textures/cm_viridis.png'
 import { MeshBVH } from 'three-mesh-bvh'
 import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils'
 
 import { VolumeMaterial } from './VolumeMaterial'
+import { MaskMaterial } from './MaskMaterial'
+import { ParticleMaterial } from './ParticleMaterial'
 import { GenerateSDFMaterial } from './GenerateSDFMaterial'
 import { RenderSDFLayerMaterial } from './RenderSDFLayerMaterial'
 
@@ -28,11 +31,13 @@ export default class ViewerCore {
     this.inverseBoundsMatrix = new THREE.Matrix4()
     this.boxHelper = new THREE.Box3Helper(new THREE.Box3())
     this.cmtextures = { viridis: new THREE.TextureLoader().load(textureViridis) }
+    this.masktextures = { mask: new THREE.TextureLoader().load('segment/20230509182749-mask.png') }
+    this.spottextures = { spot: new THREE.TextureLoader().load('spot.png') }
     this.volumePass = new FullScreenQuad(new VolumeMaterial())
     this.layerPass = new FullScreenQuad(new RenderSDFLayerMaterial())
 
     this.params = {}
-    this.params.mode = 'volume'
+    this.params.mode = 'segment'
     // this.params.mode = 'volume-segment'
     this.params.surface = 0.003
     this.params.layer = 0
@@ -60,7 +65,7 @@ export default class ViewerCore {
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50)
     this.camera.position.copy(new THREE.Vector3(0.4, -0.4, -1.0).multiplyScalar(1.0))
     this.camera.up.set(0, -1, 0)
-    this.camera.far = 5
+    this.camera.far = 10
     this.camera.updateProjectionMatrix()
 
     window.addEventListener(
@@ -82,7 +87,8 @@ export default class ViewerCore {
       const { clip } = this.volumeMeta.nrrd[i]
       const start = clip.z
       const end = clip.z + clip.d
-      this.params.layers.options[ `${start} to ${end}` ] = i
+      this.params.layers.options[ `id ${i}` ] = i
+      // this.params.layers.options[ `${start} to ${end}` ] = i
     }
   }
 
@@ -180,6 +186,14 @@ export default class ViewerCore {
 
     // create
     const loadingList = []
+    const maskMaterial = new MaskMaterial()
+    this.masktextures.mask.minFilter = THREE.NearestFilter
+    maskMaterial.uniforms.uTexture.value = this.masktextures.mask
+
+    const particleMaterial = new ParticleMaterial()
+    particleMaterial.uniforms.uTexture.value = this.spottextures.spot
+    particleMaterial.uniforms.uSize.value = 30.0 * this.renderer.getPixelRatio()
+
     const normalMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide })
     const basicMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, color: 'red' })
 
@@ -190,10 +204,14 @@ export default class ViewerCore {
       const loading = Loader.getSegmentData(sID + '.obj')
       loading.then((object) => {
         const geometry = object.children[0].geometry                          
-        const mesh = new THREE.Mesh(geometry, normalMaterial)
+        const mesh = new THREE.Points(geometry, particleMaterial)
         mesh.userData = sTarget
         mesh.name = sID
         this.scene.add(mesh)
+        const mesh_ = new THREE.Mesh(geometry, maskMaterial)
+        mesh_.userData = sTarget
+        mesh_.name = sID
+        this.scene.add(mesh_)
       })
       loadingList.push(loading)
     })
@@ -209,9 +227,9 @@ export default class ViewerCore {
         mesh.position.copy(center.clone().multiplyScalar(s))
 
         const isFocus = this.segmentList[sID].focus
-        const isNormal = mesh.material.type === 'MeshNormalMaterial'
+        const isNormal = mesh.material.type === 'ShaderMaterial'
         if (isFocus && isNormal) { mesh.material = basicMaterial }
-        if (!isFocus && !isNormal) { mesh.material = normalMaterial }
+        if (!isFocus && !isNormal) { mesh.material = particleMaterial }
       }
     })
 

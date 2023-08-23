@@ -21,8 +21,9 @@ def write_nrrd(NRRD_DIR, data):
 
 def add_data(n, p, s, c, image_stack, image_path):
     # z, y, x -> x, y, z
-    image = tiff.imread(image_path)
+    image = np.array(tiff.imread(image_path), dtype=np.float32)
     image = np.transpose(image, (2, 1, 0))
+    image /= 65535.0
 
     x, y, z = p
     nx, ny, nz = n
