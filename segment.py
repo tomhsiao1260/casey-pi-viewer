@@ -2,6 +2,7 @@ import os
 import json
 import shutil
 import numpy as np
+import tifffile as tiff
 from PIL import Image, ImageDraw
 
 ID = '20230509182749'
@@ -200,9 +201,11 @@ meta['obj'].append(info)
 with open(OBJ_INFO, "w") as outfile:
     json.dump(meta, outfile, indent=4)
 
-
 image = Image.open('./input/20230509182749.tif')
-image.save('./output/segment/20230509182749-texture.png', format='PNG')
+image = np.array(image, dtype=np.float32)
+image /= 65535.0 / 255.0
+image = image.astype(np.uint8)
+Image.fromarray(image).save('./output/segment/20230509182749-texture.png', format='PNG')
 
 with open(f'{OBJ_OUTPUT}/.gitkeep', 'w'): pass
 shutil.copy(MASK_INPUT, './output/segment')
